@@ -758,6 +758,8 @@
       await chrome.scripting.executeScript({ target: { tabId: targetTabId }, files: ['content.js'] });
       await chrome.tabs.sendMessage(targetTabId, { action: 'clear', moduleName });
     } catch (err) {
+      // "message port closed" is expected — content script runs async and never sends a response
+      if (err.message?.includes('message port closed')) return;
       addLog(`❌ ${err.message}`, 'error', clearLogEl);
       resetClearUI(false);
       setStatus('Error', 'error');
