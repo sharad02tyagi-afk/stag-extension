@@ -28,8 +28,7 @@
     SEGMENT_LIST:    '[data-automation-id="dynamic-segment-list"]',
     SEGMENT_ITEM:    '[data-automation-id^="segment-"]:not([data-automation-id="segment-actions"])',
     SEGMENT_OPTIONS: '[data-automation-id="segment-actions"]',
-    // REMOVE_ITEM selector TBD — run debug-remove-v2.js to capture the dropdown
-    REMOVE_ITEM:     '[data-automation-id="segment-remove"], [data-automation-id="remove-from-module"], [data-automation-id="delete-segment"]',
+    REMOVE_ITEM:     '[data-automation-id="detach-segment"]',
   };
 
   // ── Utilities ──────────────────────────────────────────────────────────────
