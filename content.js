@@ -315,6 +315,25 @@
     return getSegmentItems().length;
   }
 
+  // ── Click Stensul's "Remove from module" confirmation dialog ──────────────
+  async function clickStensulConfirmRemove() {
+    const deadline = Date.now() + 4000;
+    while (Date.now() < deadline) {
+      const btns = [...document.querySelectorAll('button, [role="button"]')];
+      const confirmBtn = btns.find(el => {
+        const txt = el.textContent.trim().toLowerCase();
+        const r   = el.getBoundingClientRect();
+        return txt === 'remove from module' && r.width > 0 && r.height > 0;
+      });
+      if (confirmBtn) {
+        confirmBtn.click();
+        return true;
+      }
+      await sleep(150);
+    }
+    return false;
+  }
+
   // ── Clear script: remove all segments from module ─────────────────────────
 
   async function clearAllSegments({ moduleName }) {
@@ -381,6 +400,15 @@
       }
 
       removeItem.click();
+      await sleep(500);
+
+      // Stensul shows a native confirmation dialog — auto-click "Remove from module"
+      const confirmed = await clickStensulConfirmRemove();
+      if (!confirmed) {
+        log(`⚠️ Stensul confirmation dialog not found — segment may not have been removed.`, 'warn');
+        break;
+      }
+
       await sleep(800);
       removed++;
       progress(removed, initialCount);
