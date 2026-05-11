@@ -342,7 +342,7 @@
     if (initialCount === 0) {
       log(`ℹ️ No segments found on module "${moduleName}". Nothing to remove.`, 'info');
       window.__stagActive = false;
-      chrome.runtime.sendMessage({ action: 'done' });
+      chrome.runtime.sendMessage({ action: 'done', removed: 0 });
       return;
     }
 
@@ -393,7 +393,7 @@
     }
 
     window.__stagActive = false;
-    chrome.runtime.sendMessage({ action: 'done' });
+    chrome.runtime.sendMessage({ action: 'done', removed });
   }
 
   // ── Main run (create segments) ─────────────────────────────────────────────

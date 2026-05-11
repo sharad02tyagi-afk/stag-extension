@@ -492,9 +492,29 @@
 
   // ── Completion modal ───────────────────────────────────────────────────────
 
-  function showDoneModal(count) {
-    document.getElementById('doneModalCount').textContent =
-      count > 0 ? `${count} segment${count === 1 ? '' : 's'} created.` : 'All segments created.';
+  function showDoneModal({ mode = 'create', count = 0 } = {}) {
+    const icon  = document.getElementById('doneModalIcon');
+    const title = document.getElementById('doneModalTitle');
+    const countEl = document.getElementById('doneModalCount');
+    const body  = document.getElementById('doneModalBody');
+
+    if (mode === 'clear-none') {
+      icon.textContent  = 'ℹ️';
+      title.textContent = 'No Segments to Clear';
+      countEl.textContent = '';
+      body.innerHTML    = 'No segments were found on this module.<br>Nothing to remove.';
+    } else if (mode === 'clear') {
+      icon.textContent  = '🗑️';
+      title.textContent = 'Segments Cleared!';
+      countEl.textContent = `${count} segment${count === 1 ? '' : 's'} cleared.`;
+      body.innerHTML    = 'All segments have been successfully removed.<br>Please review the module in Stensul before publishing.';
+    } else {
+      icon.textContent  = '✅';
+      title.textContent = 'All Segments Created!';
+      countEl.textContent = count > 0 ? `${count} segment${count === 1 ? '' : 's'} created.` : 'All segments created.';
+      body.innerHTML    = 'All segments have been successfully created.<br>Please review them in Stensul before publishing.';
+    }
+
     doneModal.classList.add('open');
   }
 
@@ -549,13 +569,20 @@
     }
     else if (msg.action === 'done') {
       if (isClearMode) {
-        addLog('🎉 Clear complete!', 'success', clearLogEl);
+        const removed = msg.removed ?? 0;
+        if (removed > 0) {
+          addLog(`🎉 Clear complete — ${removed} segment${removed === 1 ? '' : 's'} removed.`, 'success', clearLogEl);
+          showDoneModal({ mode: 'clear', count: removed });
+        } else {
+          addLog('ℹ️ No segments were found to clear.', 'info', clearLogEl);
+          showDoneModal({ mode: 'clear-none' });
+        }
         resetClearUI(false);
         isClearMode = false;
       } else {
         addLog('🎉 All done!', 'success', logEl);
         resetRunUI(false);
-        showDoneModal(runDoneCount);
+        showDoneModal({ mode: 'create', count: runDoneCount });
       }
     }
     else if (msg.action === 'error') {
