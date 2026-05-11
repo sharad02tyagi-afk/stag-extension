@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>STAG — Icon Generator</title>
+  <style>
+    body { font-family: sans-serif; background: #0d0f1a; color: #d1d9f0; padding: 32px; }
+    h1   { font-size: 1.2rem; margin-bottom: 8px; }
+    p    { font-size: 0.85rem; color: #5a6585; margin-bottom: 24px; }
+    .row { display: flex; align-items: flex-end; gap: 24px; flex-wrap: wrap; margin-bottom: 28px; }
+    .item { text-align: center; }
+    .item label { display: block; font-size: 0.72rem; color: #5a6585; margin-top: 6px; }
+    canvas { border-radius: 12px; }
+    .btn {
+      display: inline-block; margin-top: 24px; padding: 10px 24px;
+      background: #f97316; color: #fff; border: none; border-radius: 8px;
+      font-size: 0.9rem; font-weight: 700; cursor: pointer;
+    }
+    .note { margin-top: 16px; font-size: 0.78rem; color: #5a6585; }
+  </style>
+</head>
+<body>
+  <h1>⚡ STAG — Icon Generator</h1>
+  <p>Click the button below to download all icon sizes into your <code>icons/</code> folder.</p>
+
+  <div class="row" id="preview"></div>
+
+  <button class="btn" onclick="downloadAll()">⬇ Download All Icons</button>
+
+  <div class="note">
+    Save each file inside <code>stag-extension/icons/</code> then reload the extension.
+  </div>
+
+<script>
+  const SIZES = [16, 32, 48, 128];
+
+  function drawIcon(size) {
+    const c   = document.createElement('canvas');
+    c.width   = size;
+    c.height  = size;
+    const ctx = c.getContext('2d');
+    const s   = size;
+
+    // ── Background: dark navy rounded square ──────────────────────────────
+    const radius = s * 0.20;
+    ctx.fillStyle = '#0d1024';
+    ctx.beginPath();
+    ctx.roundRect(0, 0, s, s, radius);
+    ctx.fill();
+
+    // ── Gradient overlay (orange tint top-left) ───────────────────────────
+    const grad = ctx.createLinearGradient(0, 0, s, s);
+    grad.addColorStop(0, 'rgba(249,115,22,0.20)');
+    grad.addColorStop(1, 'rgba(249,115,22,0)');
+    ctx.fillStyle = grad;
+    ctx.beginPath();
+    ctx.roundRect(0, 0, s, s, radius);
+    ctx.fill();
+
+    // ── Three stacked segment bars (bottom half) ──────────────────────────
+    if (s >= 32) {
+      const barW   = s * 0.62;
+      const barH   = Math.max(2, s * 0.07);
+      const barR   = barH * 0.5;
+      const startX = s * 0.19;
+      const gap    = barH * 1.9;
+      const baseY  = s * 0.76;
+
+      const barColors = ['rgba(249,115,22,0.75)', 'rgba(249,115,22,0.50)', 'rgba(249,115,22,0.30)'];
+      const barWidths  = [barW, barW * 0.72, barW * 0.48];
+
+      for (let i = 0; i < 3; i++) {
+        ctx.fillStyle = barColors[i];
+        ctx.beginPath();
+        ctx.roundRect(startX, baseY - i * gap, barWidths[i], barH, barR);
+        ctx.fill();
+      }
+    } else {
+      // At 16px just draw a single bar hint
+      const barH = Math.max(1.5, s * 0.10);
+      ctx.fillStyle = 'rgba(249,115,22,0.65)';
+      ctx.fillRect(s * 0.18, s * 0.72, s * 0.64, barH);
+    }
+
+    // ── Lightning bolt (centered, upper-ish area) ─────────────────────────
+    const lw    = s * 0.50;   // bounding width
+    const lh    = s * 0.52;   // bounding height
+    const lx    = s * 0.27;   // left edge
+    const ly    = s * 0.13;   // top edge
+    const stroke = Math.max(1, s * 0.045);
+
+    // Bolt shape points (classic zigzag lightning)
+    // Top point → middle-right → middle-left → bottom point
+    const pts = [
+      [lx + lw * 0.62, ly],                          // top-right
+      [lx + lw * 0.26, ly + lh * 0.48],              // mid-left
+      [lx + lw * 0.56, ly + lh * 0.45],              // mid-right (notch)
+      [lx + lw * 0.18, ly + lh],                     // bottom-left
+      [lx + lw * 0.74, ly + lh * 0.52],              // mid-lower-right
+      [lx + lw * 0.44, ly + lh * 0.55],              // mid-lower-left (notch)
+    ];
+
+    ctx.fillStyle = '#f97316';
+    ctx.beginPath();
+    ctx.moveTo(pts[0][0], pts[0][1]);
+    for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i][0], pts[i][1]);
+    ctx.closePath();
+    ctx.fill();
+
+    // Bright highlight on bolt
+    ctx.fillStyle = 'rgba(255,200,120,0.45)';
+    ctx.beginPath();
+    ctx.moveTo(pts[0][0], pts[0][1]);
+    ctx.lineTo(pts[1][0], pts[1][1]);
+    ctx.lineTo(pts[2][0], pts[2][1]);
+    ctx.closePath();
+    ctx.fill();
+
+    // ── "STAG" label at bottom for 128px ─────────────────────────────────
+    if (s >= 128) {
+      ctx.fillStyle   = 'rgba(249,115,22,0.55)';
+      ctx.font        = `bold ${Math.round(s * 0.11)}px -apple-system, sans-serif`;
+      ctx.textAlign   = 'center';
+      ctx.textBaseline= 'bottom';
+      ctx.fillText('STAG', s / 2, s * 0.985);
+    }
+
+    return c;
+  }
+
+  // ── Preview ───────────────────────────────────────────────────────────────
+  const previewEl = document.getElementById('preview');
+  SIZES.forEach(size => {
+    const canvas = drawIcon(size);
+    const wrap   = document.createElement('div');
+    wrap.className = 'item';
+    const scale  = size < 48 ? Math.round(80 / size) : 1;
+    canvas.style.width  = (size * scale) + 'px';
+    canvas.style.height = (size * scale) + 'px';
+    canvas.style.imageRendering = 'pixelated';
+    const lbl = document.createElement('label');
+    lbl.textContent = `${size}×${size}`;
+    wrap.appendChild(canvas);
+    wrap.appendChild(lbl);
+    previewEl.appendChild(wrap);
+  });
+
+  // ── Download ──────────────────────────────────────────────────────────────
+  function downloadAll() {
+    SIZES.forEach((size, i) => {
+      setTimeout(() => {
+        const canvas = drawIcon(size);
+        const a = document.createElement('a');
+        a.download = `icon${size}.png`;
+        a.href = canvas.toDataURL('image/png');
+        a.click();
+      }, i * 300);
+    });
+  }
+</script>
+</body>
+</html>
