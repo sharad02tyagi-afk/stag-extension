@@ -294,10 +294,12 @@
       }
     }
 
-    // Fallback: text scan across all menu-like elements
+    // Fallback: text scan across all menu-like elements (including div/span/li for Element UI menus)
     const phrases = ['remove from module', 'remove from this module', 'remove segment', 'remove', 'delete'];
     const candidates = document.querySelectorAll(
-      'li, [role="menuitem"], [role="option"], [role="listitem"], button, a'
+      'li, [role="menuitem"], [role="option"], [role="listitem"], ' +
+      '.el-dropdown-menu__item, [class*="dropdown-item"], [class*="menu-item"], ' +
+      'button, a, div, span, p'
     );
     for (const el of candidates) {
       const txt = el.textContent.trim().toLowerCase();
