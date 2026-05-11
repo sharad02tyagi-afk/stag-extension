@@ -416,7 +416,9 @@
       await sleep(300);
     }
 
-    if (removed > 0) {
+    if (removed > 0 && removed < initialCount) {
+      log(`⚠️ Partial clear — only removed ${removed} of ${initialCount} segment(s). Loop exited early.`, 'warn');
+    } else if (removed > 0) {
       log(`🎉 Done — removed ${removed} segment(s) from "${moduleName}".`, 'success');
     }
 
