@@ -24,10 +24,12 @@
     BEFORE_INPUT:    '[placeholder="Select Code Before Module"]',
     AFTER_INPUT:     '[placeholder="Select Code After Module"]',
     SAVE_BTN:        '[data-automation-id="scripted-dca-save-button"]',
-    // Clear script selectors — segment items in the right panel
-    SEGMENT_ITEM:    '[data-automation-id="segment-item"]',
-    SEGMENT_OPTIONS: '[data-automation-id="segment-options-button"], [data-automation-id="segment-kebab"], [data-automation-id="segment-menu-trigger"]',
-    REMOVE_ITEM:     '[data-automation-id="segment-remove"], [data-automation-id="remove-from-module"]',
+    // Clear script selectors — verified from live DOM (May 2026)
+    SEGMENT_LIST:    '[data-automation-id="dynamic-segment-list"]',
+    SEGMENT_ITEM:    '[data-automation-id^="segment-"]:not([data-automation-id="segment-actions"])',
+    SEGMENT_OPTIONS: '[data-automation-id="segment-actions"]',
+    // REMOVE_ITEM selector TBD — run debug-remove-v2.js to capture the dropdown
+    REMOVE_ITEM:     '[data-automation-id="segment-remove"], [data-automation-id="remove-from-module"], [data-automation-id="delete-segment"]',
   };
 
   // ── Utilities ──────────────────────────────────────────────────────────────
@@ -256,41 +258,34 @@
 
   // ── Clear script helpers ───────────────────────────────────────────────────
 
-  function findFirstSegmentOptionsBtn() {
-    for (const sel of SEL.SEGMENT_OPTIONS.split(', ')) {
-      const els = document.querySelectorAll(sel.trim());
-      for (const el of els) {
-        const r = el.getBoundingClientRect();
-        if (r.width > 0 && r.height > 0) return el;
-      }
-    }
+  // Returns all visible segment divs inside the dynamic-segment-list container.
+  // Segments have data-automation-id="segment-{name}" (verified from live DOM).
+  function getSegmentItems() {
+    const list = document.querySelector(SEL.SEGMENT_LIST);
+    const scope = list || document;
+    return [...scope.querySelectorAll(SEL.SEGMENT_ITEM)].filter(el => {
+      const r = el.getBoundingClientRect();
+      return r.width > 0 && r.height > 0;
+    });
+  }
 
-    const items = document.querySelectorAll(SEL.SEGMENT_ITEM);
-    for (const item of items) {
-      const buttons = item.querySelectorAll('button, [role="button"]');
-      for (const btn of buttons) {
-        const txt = btn.textContent.trim();
-        const r   = btn.getBoundingClientRect();
-        if (r.width > 0 && r.height > 0 && (txt === '...' || txt === '⋮' || txt === '•••' || txt === '' || btn.querySelector('svg'))) {
-          return btn;
-        }
-      }
-    }
+  // Hover over a segment item to reveal the segment-actions button, then return it.
+  async function hoverAndGetOptionsBtn(segmentEl) {
+    segmentEl.dispatchEvent(new MouseEvent('mouseenter', { bubbles: true }));
+    segmentEl.dispatchEvent(new MouseEvent('mouseover',  { bubbles: true }));
+    await sleep(300);
 
-    const allBtns = document.querySelectorAll('button, [role="button"]');
-    for (const btn of allBtns) {
-      const txt = btn.textContent.trim();
-      const r   = btn.getBoundingClientRect();
-      if (r.width > 0 && r.height > 0 && r.width < 50 &&
-          (txt === '...' || txt === '⋮' || txt === '•••')) {
-        return btn;
-      }
+    // segment-actions button is revealed on hover (verified: data-automation-id="segment-actions")
+    const btn = document.querySelector(SEL.SEGMENT_OPTIONS);
+    if (btn) {
+      const r = btn.getBoundingClientRect();
+      if (r.width > 0 && r.height > 0) return btn;
     }
-
     return null;
   }
 
   function findRemoveFromModuleItem() {
+    // Try verified automation-id selectors first
     for (const sel of SEL.REMOVE_ITEM.split(', ')) {
       const el = document.querySelector(sel.trim());
       if (el) {
@@ -299,9 +294,10 @@
       }
     }
 
-    const phrases = ['remove from module', 'remove from this module', 'remove segment'];
+    // Fallback: text scan across all menu-like elements
+    const phrases = ['remove from module', 'remove from this module', 'remove segment', 'remove', 'delete'];
     const candidates = document.querySelectorAll(
-      'li, [role="menuitem"], [role="option"], [role="listitem"], p, span, div, button, a'
+      'li, [role="menuitem"], [role="option"], [role="listitem"], button, a'
     );
     for (const el of candidates) {
       const txt = el.textContent.trim().toLowerCase();
@@ -315,25 +311,7 @@
   }
 
   function countVisibleSegments() {
-    let count = 0;
-
-    const items = document.querySelectorAll(SEL.SEGMENT_ITEM);
-    if (items.length > 0) {
-      for (const item of items) {
-        const r = item.getBoundingClientRect();
-        if (r.width > 0 && r.height > 0) count++;
-      }
-      return count;
-    }
-
-    for (const sel of SEL.SEGMENT_OPTIONS.split(', ')) {
-      const els = document.querySelectorAll(sel.trim());
-      for (const el of els) {
-        const r = el.getBoundingClientRect();
-        if (r.width > 0 && r.height > 0) count++;
-      }
-    }
-    return count;
+    return getSegmentItems().length;
   }
 
   // ── Clear script: remove all segments from module ─────────────────────────
@@ -375,13 +353,21 @@
     for (let attempt = 0; attempt < maxAttempts; attempt++) {
       if (stopRequested) { log('⏹ Stopped.', 'warn'); break; }
 
-      const optBtn = findFirstSegmentOptionsBtn();
-      if (!optBtn) {
+      const segments = getSegmentItems();
+      if (segments.length === 0) {
         log(`✅ No more segments found — removed ${removed} total.`, 'success');
         break;
       }
 
-      log(`  🔧 Opening options for segment ${removed + 1}…`, 'dim');
+      const firstSeg = segments[0];
+      log(`  🔧 Hovering segment ${removed + 1} to reveal actions button…`, 'dim');
+      const optBtn = await hoverAndGetOptionsBtn(firstSeg);
+
+      if (!optBtn) {
+        log(`⚠️ segment-actions button not found after hover. Selectors may need updating.`, 'warn');
+        break;
+      }
+
       optBtn.click();
       await sleep(500);
 
@@ -389,8 +375,7 @@
       if (!removeItem) {
         document.body.click();
         await sleep(300);
-        log(`⚠️ Options menu opened but "Remove from module" not found. Selectors may need updating.`, 'warn');
-        log(`  ℹ️ Verify that the segment options menu contains "Remove from module" text.`, 'dim');
+        log(`⚠️ Options menu opened but remove item not found — run debug-remove-v2.js to capture the menu.`, 'warn');
         break;
       }
 
